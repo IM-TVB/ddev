@@ -140,8 +140,12 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
             gui.setItem(i, glass);
         }
         
-        List<String> allowedEntities = config.getStringList("allowed-entities", 
-            Arrays.asList("ZOMBIE", "SKELETON", "CREEPER", "SPIDER", "ENDERMAN"));
+        List<String> allowedEntities = config.getStringList("allowed-entities");
+        if (allowedEntities == null || allowedEntities.isEmpty()) {
+            allowedEntities = Arrays.asList("ZOMBIE", "SKELETON", "CREEPER", "SPIDER", "ENDERMAN");
+            config.set("allowed-entities", allowedEntities);
+            saveConfig();
+        }
         
         int slot = 0;
         for (String entityName : allowedEntities) {
