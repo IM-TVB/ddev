@@ -1,37 +1,32 @@
 ```
-# Dependencies
+# Java/Maven specific
 target/
-.m2/
-.gradle/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
 
-# Logs and temp files
+# Dependencies
+lib/
+libs/
+
+# IDE
+.classpath
+.project
+.settings/
+.metadata/
+
+# Logs
 *.log
-*.tmp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Editors
-.vscode/
-.idea/
-
-# Compiled and build artifacts
-*.class
-*.jar
-*.war
-*.ear
-*.so
-*.dll
-*.dylib
-*.o
-*.obj
-*.out
-
-# Python artifacts (if applicable)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# OS
+.DS_Store
+Thumbs.db
 ```
