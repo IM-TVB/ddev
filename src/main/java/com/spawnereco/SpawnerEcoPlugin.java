@@ -184,7 +184,7 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
                 withdrawFunds(player, cost);
             }
 
-            player.getLocation().spawnEntity(entityType);
+            player.getLocation().getWorld().spawnEntity(player.getLocation(), entityType);
             lastSpawnTime.put(player.getUniqueId(), System.currentTimeMillis());
             spawnCount.merge(player.getUniqueId(), 1, Integer::sum);
 
