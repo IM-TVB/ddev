@@ -1,32 +1,52 @@
 ```
-# Java/Maven specific
-target/
+# Compiled and build artifacts
 *.class
-*.jar
-*.war
-*.ear
-*.zip
-*.tar.gz
+*.o
+*.obj
+*.out
+build/
+target/
 
 # Dependencies
 lib/
 libs/
+dependency-reduced-pom.xml
 
-# IDE
-.classpath
-.project
-.settings/
-.metadata/
-
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# OS
+# Editors
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS specific
 .DS_Store
 Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Gradle
+.gradle/
+build/
+
+# Maven
+target/
+*.jar
+*.war
+*.ear
+pom.xml.tag
+pom.xml.releaseBackup
 ```
