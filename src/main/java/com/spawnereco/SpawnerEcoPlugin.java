@@ -155,6 +155,7 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
             try {
                 entityType = EntityType.valueOf(entityName.toUpperCase());
             } catch (IllegalArgumentException e) {
+                getLogger().warning("Invalid entity in config: " + entityName);
                 continue;
             }
             
