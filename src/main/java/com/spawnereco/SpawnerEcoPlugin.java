@@ -3,6 +3,7 @@ package com.spawnereco;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -10,6 +11,12 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,13 +24,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, TabCompleter {
+public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, TabCompleter, Listener {
 
     private Economy vaultEconomy;
     private Plugin econoShopGui;
     private FileConfiguration config;
     private Map<UUID, Long> lastSpawnTime = new ConcurrentHashMap<>();
     private Map<UUID, Integer> spawnCount = new ConcurrentHashMap<>();
+    private static final String GUI_TITLE = "§6§lSpawner Shop";
+    private static final int GUI_SIZE = 54;
 
     @Override
     public void onEnable() {
@@ -48,9 +57,12 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
             getLogger().info("Vault economy found! Using it for economy transactions.");
         }
 
+        Bukkit.getPluginManager().registerEvents(this, this);
+
         getCommand("spawn").setExecutor(this);
         getCommand("spawn").setTabCompleter(this);
         getCommand("spawner-eco").setExecutor(this);
+        getCommand("spawner-eco").setTabCompleter(this);
 
         getLogger().info("SpawnerEco has been enabled!");
     }
@@ -58,6 +70,133 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
     @Override
     public void onDisable() {
         getLogger().info("SpawnerEco has been disabled!");
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!event.getView().getTitle().equals(GUI_TITLE)) return;
+        
+        event.setCancelled(true);
+        
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
+        
+        if (!clickedItem.hasItemMeta() || !clickedItem.getItemMeta().hasDisplayName()) return;
+        
+        String displayName = ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName());
+        
+        if (displayName.contains("Spawner")) {
+            String entityName = displayName.replace(" Spawner", "").toLowerCase().replace(" ", "_");
+            handleSpawnerPurchase(player, entityName);
+            player.closeInventory();
+        }
+    }
+
+    private void handleSpawnerPurchase(Player player, String entityName) {
+        EntityType entityType;
+        try {
+            entityType = EntityType.valueOf(entityName.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(colorize("&cInvalid entity type!"));
+            return;
+        }
+
+        double cost = getEntityCost(entityType);
+        
+        if (!hasFunds(player, cost)) {
+            player.sendMessage(colorize(config.getString("messages.no-funds", "&cInsufficient funds! Cost: $%cost%")
+                    .replace("%cost%", String.format("%.2f", cost))));
+            return;
+        }
+
+        withdrawFunds(player, cost);
+        
+        ItemStack spawnerItem = createSpawnerItem(entityType);
+        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(spawnerItem);
+        
+        if (!leftover.isEmpty()) {
+            for (ItemStack item : leftover.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), item);
+            }
+            player.sendMessage(colorize("&eSpawner dropped on ground - inventory full!"));
+        } else {
+            player.sendMessage(colorize("&aPurchased " + entityType.name() + " spawner for $" + String.format("%.2f", cost) + "!"));
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        }
+    }
+
+    private void openSpawnerGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, GUI_SIZE, GUI_TITLE);
+        
+        ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta glassMeta = glass.getItemMeta();
+        if (glassMeta != null) {
+            glassMeta.setDisplayName(" ");
+            glass.setItemMeta(glassMeta);
+        }
+        for (int i = 0; i < GUI_SIZE; i++) {
+            gui.setItem(i, glass);
+        }
+        
+        List<String> allowedEntities = config.getStringList("allowed-entities", 
+            Arrays.asList("ZOMBIE", "SKELETON", "CREEPER", "SPIDER", "ENDERMAN"));
+        
+        int slot = 0;
+        for (String entityName : allowedEntities) {
+            if (slot >= 45) break;
+            
+            EntityType entityType;
+            try {
+                entityType = EntityType.valueOf(entityName.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            
+            ItemStack spawnerItem = createSpawnerItem(entityType);
+            double cost = getEntityCost(entityType);
+            
+            ItemMeta meta = spawnerItem.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName(ChatColor.GOLD + "" + ChatColor.BOLD + formatEntityName(entityType) + " Spawner");
+                List<String> lore = new ArrayList<>();
+                lore.add(ChatColor.WHITE + "Cost: " + ChatColor.GREEN + "$" + String.format("%.2f", cost));
+                lore.add(ChatColor.YELLOW + "Click to purchase!");
+                lore.add("");
+                lore.add(ChatColor.GRAY + "Limits: " + config.getInt("limits.max-active", 50));
+                meta.setLore(lore);
+                spawnerItem.setItemMeta(meta);
+            }
+            
+            gui.setItem(slot, spawnerItem);
+            slot++;
+        }
+        
+        player.openInventory(gui);
+    }
+
+    private ItemStack createSpawnerItem(EntityType entityType) {
+        ItemStack spawner = new ItemStack(Material.SPAWNER);
+        ItemMeta meta = spawner.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.WHITE + formatEntityName(entityType) + " Spawner");
+            spawner.setItemMeta(meta);
+        }
+        return spawner;
+    }
+
+    private String formatEntityName(EntityType entityType) {
+        String name = entityType.name().replace("_", " ");
+        StringBuilder result = new StringBuilder();
+        for (String word : name.split(" ")) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                      .append(word.substring(1).toLowerCase())
+                      .append(" ");
+            }
+        }
+        return result.toString().trim();
     }
 
     private boolean setupVaultEconomy() {
@@ -125,17 +264,20 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("spawner-eco")) {
-            if (!sender.hasPermission("spawnereco.admin")) {
-                sender.sendMessage(colorize(config.getString("messages.no-permission", "&cNo permission!")));
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("&cOnly players can use this command!");
                 return true;
             }
-            if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-                reloadConfig();
-                config = getConfig();
-                sender.sendMessage(colorize(config.getString("messages.reload", "&aConfiguration reloaded!")));
+            
+            Player player = (Player) sender;
+            
+            if (!player.hasPermission("spawnereco.use")) {
+                player.sendMessage(colorize(config.getString("messages.no-permission", "&cNo permission!")));
                 return true;
             }
-            sender.sendMessage("&cUsage: /spawner-eco reload");
+            
+            // Open GUI when no args provided
+            openSpawnerGUI(player);
             return true;
         }
 
@@ -262,5 +404,11 @@ public class SpawnerEcoPlugin extends JavaPlugin implements CommandExecutor, Tab
                     .toList();
         }
         return Collections.emptyList();
+    }
+
+    private void reloadConfig(Player player) {
+        reloadConfig();
+        config = getConfig();
+        player.sendMessage(colorize("&aConfiguration reloaded!"));
     }
 }
