@@ -1,0 +1,40 @@
+# SpawnerEco Configuration
+
+# Economy settings
+economy:
+  # Enable economy cost for spawning
+  enabled: true
+  # Default cost for spawning any entity (can be overridden per entity)
+  default-cost: 10.0
+
+# Entity-specific costs (override default-cost)
+entity-costs:
+  ZOMBIE: 5.0
+  SKELETON: 5.0
+  CREEPER: 8.0
+  ENDERMAN: 15.0
+  BLAZE: 20.0
+  WITHER_SKELETON: 25.0
+  VILLAGER: 50.0
+  IRON_GOLEM: 100.0
+
+# Spawn limits
+limits:
+  # Maximum entities a player can spawn per minute
+  per-minute: 10
+  # Maximum total spawned entities active at once per player
+  max-active: 50
+
+# Cooldown between spawns in seconds
+cooldown: 2
+
+# Messages
+messages:
+  no-permission: "&cYou don't have permission to do that!"
+  no-funds: "&cInsufficient funds! You need $%cost%."
+  cooldown: "&cPlease wait %seconds% seconds before spawning again."
+  limit-reached: "&cSpawn limit reached! Try again later."
+  invalid-entity: "&cInvalid entity type!"
+  spawned: "&aSuccessfully spawned %entity%!"
+  reload: "&aConfiguration reloaded!"
+  econoshop-integration: "&7Using EconoShopGUI for economy transactions."

@@ -1,0 +1,32 @@
+name: SpawnerEco
+version: 1.0.0
+main: com.spawnereco.SpawnerEcoPlugin
+api-version: '1.20'
+description: A plugin for spawning entities with economy integration
+author: Developer
+website: https://example.com
+
+commands:
+  spawn:
+    description: Spawn an entity with economy cost
+    usage: /<command> <entity>
+    permission: spawnereco.use
+  spawner-eco:
+    description: Admin commands for SpawnerEco
+    usage: /<command> reload
+    permission: spawnereco.admin
+
+permissions:
+  spawnereco.use:
+    description: Allows using the spawn command
+    default: true
+  spawnereco.admin:
+    description: Allows admin commands
+    default: op
+
+depend: []
+
+softdepend:
+  - Vault
+  - EconoShopGUI
+  - EssentialsX
